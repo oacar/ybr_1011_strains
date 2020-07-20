@@ -1,30 +1,34 @@
 library(SNPRelate)
 library(ape)
 library(tidyverse)
-vcf_file <- '../data/raw/1011Matrix.gvcf'
+setwd('src')
 
-snpgdsVCF2GDS(vcf_file,'../data/interim/biallelic.gds', method='biallelic.only')
-
-snpgdsSummary("../data/interim/biallelic.gds")
-
-genofile <- snpgdsOpen("../data/interim/biallelic.gds")
-
-diss <- snpgdsDiss(genofile, autosome.only=FALSE)
-diss.mat <- diss$diss
-
-phy <- bionj(diss.mat)
+# Create phylogenetic tree from gvcf file -------
+##DO NOT RUN
+# vcf_file <- '../data/raw/1011Matrix.gvcf.gz'
+# 
+# snpgdsVCF2GDS(vcf_file,'../data/interim/biallelic.gds', method='biallelic.only')
+# 
+# snpgdsSummary("../data/interim/biallelic.gds")
+# 
+# genofile <- snpgdsOpen("../data/interim/biallelic.gds")
+# 
+# diss <- snpgdsDiss(genofile, autosome.only=FALSE)
+# diss.mat <- diss$diss
+# 
+# phy <- bionj(diss.mat)
 load('../data/interim/bionj_image.Rdata')
 phy$tip.label <- diss$sample.id
 png('../figures/phy_bionj.png')
 plot(phy)
 dev.off()
-save.image(file='../data/interim/bionj_image.Rdata')
+#save.image(file='../data/interim/bionj_image.Rdata')
 
-
+#END DO NO RUN
 
 #library(tidyverse)
 #tree = 
-
+# Get binary matrix - ------
 data <- read_csv("../data/interim/ybr_promoter_motif_df.csv") # %>%filter(motif_center>500)
 strain_df <- read_csv("../data/interim/strain_ybr_start_stop.csv") %>%
   mutate(start_codon = start) %>%
@@ -58,31 +62,54 @@ binary_mat <- data %>%
   #arrange(sequence_name) %>% 
   column_to_rownames(var="sequence_name") %>% 
   as.matrix() 
+
+
+# Use strain data from paper -------
+strain_data <- readxl::read_xls('../data/raw/strain_data.xls',sheet = 1,skip = 3)
+
+data_with_clades <- data_orf_cons %>% inner_join(strain_data, by=c('sequence_name'='Standardized name'))
+orf_not_retained_clades <- data_with_clades %>% filter(orf_conserved=='ORF not retained') %>% distinct(sequence_name, Clades, start_codon,stop_pos) #%>% view()
+orf_not_retained_msn1 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Msn1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
+orf_not_retained_gcn4 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Gcn4p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
+orf_not_retained_rgt1 <- data_with_clades %>% filter(orf_conserved=='ORF retained' & motif_alt_id=='Rgt1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
+orf_not_retained_rdr1 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Rdr1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
+
+# Plot complex heatmap --------
 library(DECIPHER)
 dend <- ReadDendrogram('../data/interim/bionj.nwk',convertBlanks = FALSE)
-gplots::heatmap.2(binary_mat,trace='none',Rowv = FALSE,Colv = FALSE,dendrogram = 'none')
+#gplots::heatmap.2(binary_mat_rwnames,trace='none',Rowv = FALSE,Colv = FALSE,dendrogram = 'none')
 
 #coords <- locator(1)
-hm <- ComplexHeatmap::Heatmap(binary_mat,col = c('white','blue'), cluster_rows = dend %>% dendextend::set("branches_col", ifelse(labels(dend)%in%orf_not_retained_clades$sequence_name,'red','black')),
-                           row_dend_width = unit(8, "cm"),
-                           row_dend_reorder = FALSE)
-ha = ComplexHeatmap::HeatmapAnnotation(bar = ifelse(labels(dend)%in%orf_not_retained_clades$sequence_name,'blue','orange'),
-                                   which='row',col=list(bar=c('blue'='blue','orange'='orange')))
-ha+hm
-pdf('../figures/heatmap_nj.pdf')
-cbind(ifelse(rownames(binary_mat)%in%orf_not_retained_clades$sequence_name,1,0), binary_mat) %>% 
-gplots::heatmap.2(trace='none',Rowv = dend %>% dendextend::set("branches_col", ifelse(labels(dend)=='SACE_YDO','red','black')),Colv = FALSE,dendrogram = 'row',
-                  RowSideColors =  ifelse(labels(dend)=='SACE_YDO','red','black'),
-                  col=rev(heat.colors(100)))
-legend(x=0.2,y=1, xpd=TRUE,
-       legend = unique(color_df$orf_conserved),
-       col = unique(color_df$color), 
-       lty= 1,             
-       lwd = 5,           
-       cex=.7
-)
-dev.off()
+# Remove rownames from matrix
+binary_mat_rwnames <- binary_mat[labels(dend),]
+rownames(binary_mat_rwnames) <- NULL#ifelse(rownames(binary_mat_rwnames)%in%orf_not_retained_clades$sequence_name,rownames(binary_mat_rwnames),'')
+ha = ComplexHeatmap::HeatmapAnnotation(YBR = ifelse(labels(dend)%in%orf_not_retained_clades$sequence_name,'ORF broken','ORF retained'),
+                                       which='row',col=list(YBR=c('ORF retained'='orange','ORF broken'='blue')))
 
+pdf("../figures/heatmap_complex.pdf", width = 8, height = 8)
+hm <- ComplexHeatmap::Heatmap(binary_mat_rwnames[,c('Msn1p','Gcn4p','Rgt1p','Rdr1p')],col = c('white','red'), 
+                              cluster_rows = dend %>% set("by_labels_branches_col",    value = orf_not_retained_clades$sequence_name,
+                                                          TF_values = c('blue','orange')),
+                                #dendextend::set("branches_col", ifelse(rownames(binary_mat_rwnames)%in%c('BND','BEE','BMR'),'blue','orange')),
+                           row_dend_width = unit(8, "cm"),
+                           row_dend_reorder = FALSE,
+                           right_annotation = ha,
+                           column_title = "TFBS", 
+                           row_title = "S.cerevisiae Strains",
+                           #col = colors,
+                           border = TRUE,
+                           heatmap_legend_param = list(
+                             at = c(0, 1),
+                             labels = c("False", "True"),
+                             title = "TFBS Found",
+                             legend_height = unit(4, "cm")
+                             #title_position = "lefttop-rot"
+                           ),
+                           use_raster = TRUE, 
+                           raster_device = "png")
+
+hm
+dev.off()
 
 # Plot phylogenetic tree --------
 library(phylocanvas)
@@ -104,13 +131,4 @@ for( i in unique(data$sequence_name[data$stop_pos!=49 & data$start_codon!='M']))
 
 phycanv_stop
 
-# Use strain data from paper -------
-strain_data <- readxl::read_xls('../data/raw/strain_data.xls',sheet = 1,skip = 3)
-
-data_with_clades <- data_orf_cons %>% inner_join(strain_data, by=c('sequence_name'='Standardized name'))
-orf_not_retained_clades <- data_with_clades %>% filter(orf_conserved=='ORF not retained') %>% distinct(sequence_name, Clades, start_codon,stop_pos) #%>% view()
-orf_not_retained_msn1 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Msn1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
-orf_not_retained_gcn4 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Gcn4p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
-orf_not_retained_rgt1 <- data_with_clades %>% filter(orf_conserved=='ORF retained' & motif_alt_id=='Rgt1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
-orf_not_retained_rdr1 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Rdr1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
 
