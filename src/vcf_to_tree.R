@@ -86,7 +86,7 @@ rownames(binary_mat_rwnames) <- NULL#ifelse(rownames(binary_mat_rwnames)%in%orf_
 ha = ComplexHeatmap::HeatmapAnnotation(YBR = ifelse(labels(dend)%in%orf_not_retained_clades$sequence_name,'ORF broken','ORF retained'),
                                        which='row',col=list(YBR=c('ORF retained'='orange','ORF broken'='blue')))
 
-pdf("../figures/heatmap_complex.pdf", width = 8, height = 8)
+pdf("../figures/heatmap_complex_4tfbs.pdf", width = 8, height = 8)
 hm <- ComplexHeatmap::Heatmap(binary_mat_rwnames[,c('Msn1p','Gcn4p','Rgt1p','Rdr1p')],col = c('white','red'), 
                               cluster_rows = dend %>% set("by_labels_branches_col",    value = orf_not_retained_clades$sequence_name,
                                                           TF_values = c('blue','orange')),
@@ -106,11 +106,41 @@ hm <- ComplexHeatmap::Heatmap(binary_mat_rwnames[,c('Msn1p','Gcn4p','Rgt1p','Rdr
                              #title_position = "lefttop-rot"
                            ),
                            use_raster = TRUE, 
-                           raster_device = "png")
+                           raster_device = "png",
+                           column_names_gp = grid::gpar(fontsize = 10),
+                           column_names_rot = 45)
 
 hm
 dev.off()
 
+
+
+pdf("../figures/heatmap_complex.pdf", width = 8, height = 8)
+hm <- ComplexHeatmap::Heatmap(binary_mat_rwnames,col = c('white','red'), 
+                              cluster_rows = dend %>% set("by_labels_branches_col",    value = orf_not_retained_clades$sequence_name,
+                                                          TF_values = c('blue','orange')),
+                              #dendextend::set("branches_col", ifelse(rownames(binary_mat_rwnames)%in%c('BND','BEE','BMR'),'blue','orange')),
+                              row_dend_width = unit(6, "cm"),
+                              row_dend_reorder = FALSE,
+                              right_annotation = ha,
+                              column_title = "TFBS", 
+                              row_title = "S.cerevisiae Strains",
+                              #col = colors,
+                              border = TRUE,
+                              heatmap_legend_param = list(
+                                at = c(0, 1),
+                                labels = c("False", "True"),
+                                title = "TFBS Found",
+                                legend_height = unit(4, "cm")
+                                #title_position = "lefttop-rot"
+                              ),
+                              use_raster = TRUE, 
+                              raster_device = "png",
+                              column_names_gp = grid::gpar(fontsize = 8),
+                              column_names_rot = 45)
+
+hm
+dev.off()
 # Plot phylogenetic tree --------
 library(phylocanvas)
 phycanv_stop <- phylocanvas(phy,treetype = "rectangular")
