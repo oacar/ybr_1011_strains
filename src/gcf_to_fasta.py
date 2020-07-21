@@ -4,7 +4,7 @@ import pandas as pd
 import subprocess
 from Bio import SeqIO
 
-df = pd.read_csv('ybr_locus_intersect_bcftools.gvcf','\t',skiprows=61)
+df = pd.read_csv('data/interim/ybr_locus_intersect_bcftools.gvcf','\t',skiprows=61)
 df = df.rename(columns={"ALT.1":"ALT"})
 
 subprocess.run("bcftools view -R ybr_locus.bed 1011Matrix.gvcf.gz > ybr_locus_intersect_bcftools.gvcf",shell=True)
@@ -13,7 +13,7 @@ subprocess.run("gatk CreateSequenceDictionary -R Saccharomyces_cerevisiae.R64-1-
 
 subprocess.run("gatk IndexFeatureFile -I ybr_locus_intersect_bcftools.gvcf",shell=True)
 for i in df.columns[9:]:   
-    cmd = f"gatk SelectVariants -R Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -V ybr_locus_intersect_bcftools.gvcf --sample-name {i} -O sample_vcf/{i}.vcf"
+    cmd = f"gatk SelectVariants -R data/raw/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -V data/raw/1011Matrix.gvcf --restrict-alleles-to BIALLELIC -O data/interim/biallelic.vcf"
     subprocess.run(cmd,shell=True)
 
 for i in df.columns[9:]:   
