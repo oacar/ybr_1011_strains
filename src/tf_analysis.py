@@ -18,12 +18,12 @@ ybr = SeqIO.parse("data/interim/ybr_consensus/1011_ybr_orf_rev_cons.fasta",'fast
 ybr_list= [i for i in ybr]
 ybr_list.sort(key=lambda x:x.id)
 
-ybr_translation = [i.translate() for i in ybr_list]
+ybr_translation = [i.translate(id=True,name='',description='') for i in ybr_list]
 non_atg = [i for i in ybr_translation if i[0]!='M']
 len(non_atg)
 len(ybr_list)
 stop_pos =[]
-
+SeqIO.write(ybr_translation,'data/interim/sequences/ybr_translation.fa','fasta')
 for i in ybr_translation:
    s =  [m.start() for m in re.finditer('\*', str(i.seq))]
    if len(s)!=0:

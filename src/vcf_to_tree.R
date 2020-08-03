@@ -1,6 +1,7 @@
 library(SNPRelate)
 library(ape)
 library(tidyverse)
+library(dendextend)
 setwd('src')
 
 # Create phylogenetic tree from gvcf file -------
@@ -65,14 +66,35 @@ binary_mat <- data %>%
 
 
 # Use strain data from paper -------
-strain_data <- readxl::read_xls('../data/raw/strain_data.xls',sheet = 1,skip = 3)
+strain_data <- readxl::read_xls("../data/raw/strain_data.xls", sheet = 1, skip = 3)
 
-data_with_clades <- data_orf_cons %>% inner_join(strain_data, by=c('sequence_name'='Standardized name'))
-orf_not_retained_clades <- data_with_clades %>% filter(orf_conserved=='ORF not retained') %>% distinct(sequence_name, Clades, start_codon,stop_pos) #%>% view()
-orf_not_retained_msn1 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Msn1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
-orf_not_retained_gcn4 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Gcn4p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
-orf_not_retained_rgt1 <- data_with_clades %>% filter(orf_conserved=='ORF retained' & motif_alt_id=='Rgt1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
-orf_not_retained_rdr1 <- data_with_clades %>% filter(orf_conserved=='ORF not retained' & motif_alt_id=='Rdr1p') %>% distinct(sequence_name, Clades, start_codon,stop_pos)
+data_with_clades <- data_orf_cons %>% inner_join(strain_data, by = c("sequence_name" = "Standardized name"))
+orf_data_with_clades <- data_with_clades %>% distinct(sequence_name, Clades, start_codon, stop_pos) # %>% view
+
+orf_not_retained_clades <- data_with_clades %>%
+  filter(orf_conserved == "ORF not retained") %>%
+  distinct(sequence_name, Clades, start_codon, stop_pos) %>%
+  mutate(mutation = case_when(
+    stop_pos != 49 & start_codon != "M" ~ "Both",
+    stop_pos != 49 ~ "Premature stop codon",
+    start_codon != "M" ~ "No start codon"
+  ))
+
+orf_not_retained_msn1 <- data_with_clades %>%
+  filter(orf_conserved == "ORF not retained" & motif_alt_id == "Msn1p") %>%
+  distinct(sequence_name, Clades, start_codon, stop_pos)
+
+orf_not_retained_gcn4 <- data_with_clades %>%
+  filter(orf_conserved == "ORF not retained" & motif_alt_id == "Gcn4p") %>%
+  distinct(sequence_name, Clades, start_codon, stop_pos)
+
+orf_not_retained_rgt1 <- data_with_clades %>%
+  filter(orf_conserved == "ORF retained" & motif_alt_id == "Rgt1p") %>%
+  distinct(sequence_name, Clades, start_codon, stop_pos)
+
+orf_not_retained_rdr1 <- data_with_clades %>%
+  filter(orf_conserved == "ORF not retained" & motif_alt_id == "Rdr1p") %>%
+  distinct(sequence_name, Clades, start_codon, stop_pos)
 
 # Plot complex heatmap --------
 library(DECIPHER)
@@ -84,14 +106,22 @@ dend <- ReadDendrogram('../data/interim/bionj.nwk',convertBlanks = FALSE)
 binary_mat_rwnames <- binary_mat[labels(dend),]
 rownames(binary_mat_rwnames) <- NULL#ifelse(rownames(binary_mat_rwnames)%in%orf_not_retained_clades$sequence_name,rownames(binary_mat_rwnames),'')
 ha = ComplexHeatmap::HeatmapAnnotation(YBR = ifelse(labels(dend)%in%orf_not_retained_clades$sequence_name,'ORF broken','ORF retained'),
-                                       which='row',col=list(YBR=c('ORF retained'='orange','ORF broken'='blue')))
+                                       clade = ifelse(labels(dend)%in%orf_not_retained_clades$sequence_name,column_to_rownames(orf_data_with_clades %>% mutate(Clades=ifelse(is.na(Clades),'NA',Clades)),'sequence_name')[labels(dend),]$Clades,'Other'),
+                                       which='row',col=list(YBR=c('ORF retained'='orange','ORF broken'='blue'),
+                                                            clade = c("Other"="white",
+                                                                      'M3. Mosaic region 3'='brown2',
+                                                                      'NA'='black',
+                                                                      '5. French dairy'='violet',
+                                                                      '13. African palm wine'='olivedrab2',
+                                                                      '16. CHNI'='darkred',
+                                                                      '10. French Guiana human'='seagreen')))
 
-pdf("../figures/heatmap_complex_4tfbs.pdf", width = 8, height = 8)
+pdf("../figures/heatmap_complex_4tfbs.pdf", width = 8, height = 6)
 hm <- ComplexHeatmap::Heatmap(binary_mat_rwnames[,c('Msn1p','Gcn4p','Rgt1p','Rdr1p')],col = c('white','red'), 
                               cluster_rows = dend %>% set("by_labels_branches_col",    value = orf_not_retained_clades$sequence_name,
                                                           TF_values = c('blue','orange')),
                                 #dendextend::set("branches_col", ifelse(rownames(binary_mat_rwnames)%in%c('BND','BEE','BMR'),'blue','orange')),
-                           row_dend_width = unit(8, "cm"),
+                           row_dend_width = unit(4, "cm"),
                            row_dend_reorder = FALSE,
                            right_annotation = ha,
                            column_title = "TFBS", 
@@ -120,7 +150,7 @@ hm <- ComplexHeatmap::Heatmap(binary_mat_rwnames,col = c('white','red'),
                               cluster_rows = dend %>% set("by_labels_branches_col",    value = orf_not_retained_clades$sequence_name,
                                                           TF_values = c('blue','orange')),
                               #dendextend::set("branches_col", ifelse(rownames(binary_mat_rwnames)%in%c('BND','BEE','BMR'),'blue','orange')),
-                              row_dend_width = unit(6, "cm"),
+                              row_dend_width = unit(4, "cm"),
                               row_dend_reorder = FALSE,
                               right_annotation = ha,
                               column_title = "TFBS", 
