@@ -17,9 +17,9 @@ from Bio import SeqIO
 
 
 
-subprocess.run("bcftools view -R data/interim/ybr_locus.bed data/raw/1011Matrix.gvcf.gz > data/interim/ybr_locus_intersect_bcftools.gvcf",shell=True)
+subprocess.run("bcftools view -R data/raw/ybr_locus.bed data/raw/1011Matrix.gvcf.gz > data/interim/ybr_locus_intersect_bcftools.gvcf",shell=True)
 
-subprocess.run("bedtools getfasta -fi data/raw/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -bed data/interim/ybr_locus.bed -fo data/interim/ybr_locus_scer_positive_strand.fasta",shell=True)
+subprocess.run("bedtools getfasta -fi data/raw/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -bed data/raw/ybr_locus.bed -fo data/interim/ybr_locus_scer_positive_strand.fasta",shell=True)
 df = pd.read_csv('data/interim/ybr_locus_intersect_bcftools.gvcf',sep='\t',skiprows=61)
 df = df.rename(columns={"ALT.1":"ALT"})
 subprocess.run("gatk CreateSequenceDictionary -R data/raw/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa",shell=True)
