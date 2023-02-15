@@ -1,7 +1,0 @@
-# 0-order Markov frequencies from file ybr_block.fasta
-# seqs: 1012    min: 3599    max: 3638    avg: 3625.8    sum: 3669260    alph: DNA
-# order 0
-A 2.882e-01
-C 2.118e-01
-G 2.118e-01
-T 2.882e-01
