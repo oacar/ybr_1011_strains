@@ -4,7 +4,7 @@ Need this raw files in `data/raw/` folder
 - Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa
 - Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa.fai
 - ybr_locus.bed 
-    content is : `chromosome2	612230	615586`
+    content is : `chromosome2	612230	615856`
 
 Run following in order:
 1. `python3 gvcf_to_fimo_results.py`
