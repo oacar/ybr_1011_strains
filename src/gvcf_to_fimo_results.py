@@ -11,15 +11,16 @@ from Bio import SeqIO
 #Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa is the reference genome of yeast
 
 # ybr_locus_intersect_bcftools.gvcf is only used for the column names of the dataframe
+# full gvcf file is too big to be read into memory
 # ybr_locus_scer_positive_strand.fasta is the reference sequence of the YBR locus
 # ybr_locus_consensus_per_genome is a folder with the consensus sequences of the YBR locus for each strain
 # 1011_ybr_rev_cons.fasta is the consensus sequences of the YBR locus on the negative strand for each strain concatenated
 
 
-
 subprocess.run("bcftools view -R data/raw/ybr_locus.bed data/raw/1011Matrix.gvcf.gz > data/interim/ybr_locus_intersect_bcftools.gvcf",shell=True)
 
 subprocess.run("bedtools getfasta -fi data/raw/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa -bed data/raw/ybr_locus.bed -fo data/interim/ybr_locus_scer_positive_strand.fasta",shell=True)
+
 df = pd.read_csv('data/interim/ybr_locus_intersect_bcftools.gvcf',sep='\t',skiprows=61)
 df = df.rename(columns={"ALT.1":"ALT"})
 subprocess.run("gatk CreateSequenceDictionary -R data/raw/Saccharomyces_cerevisiae.R64-1-1.dna.toplevel.fa",shell=True)
